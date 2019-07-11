@@ -68,13 +68,13 @@ class CycleGANModel(BaseModel):
 
         # specify the models you want to save to the disk. The training/test scripts will call <BaseModel.save_networks> and <BaseModel.load_networks>.
         if self.isTrain:
-            self.model_names = ['G_AB', 'D_A', 'D_B']
+            self.model_names = ['G_BC', 'D_A', 'D_B']
         else:  # during test time, only load Gs
-            self.model_names = ['G_AB']
+            self.model_names = ['G_BC']
 
         # define networks (both Generators and discriminators)
         # The naming is different from those used in the paper.
-        # Code (vs. paper): G_AB (G), D_A (D_Y), D_B (D_X)
+        # Code (vs. paper): G_BC (G), D_A (D_Y), D_B (D_X)
         self.netG_BC = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm,
                                          not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
         # self.netG_B = networks.define_G(opt.output_nc, opt.input_nc, opt.ngf, opt.netG, opt.norm,
@@ -118,9 +118,9 @@ class CycleGANModel(BaseModel):
 
     def forward(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
-        self.fake_A_BC = self.netG_BC(self.real_A)  # G_AB(A)
-        self.fake_B_BC = self.netG_BC(self.real_B)  # G_AB(B)
-        self.fake_C_BC = self.netG_BC(self.real_C)  # G_AB(C)
+        self.fake_A_BC = self.netG_BC(self.real_A)  # G_BC(A)
+        self.fake_B_BC = self.netG_BC(self.real_B)  # G_BC(B)
+        self.fake_C_BC = self.netG_BC(self.real_C)  # G_BC(C)
 
     def backward_D_basic(self, netD, real, fake_A, fake_B, fake_C):
         """Calculate GAN loss for the discriminator
@@ -165,7 +165,7 @@ class CycleGANModel(BaseModel):
         self.loss_D_B = self.backward_D_basic(self.netD_B, self.real_B, fake_A, fake_B, fake_C)
 
     def backward_G(self):
-        """Calculate the loss for generators G_AB"""
+        """Calculate the loss for generators G_BC"""
         # GAN loss D_B(G_BC(A))
         self.loss_G_A_B = self.criterionGAN(self.netD_B(self.fake_A_BC), True)
         self.loss_G_A_C = self.criterionGAN(self.netD_C(self.fake_A_BC), True)
@@ -184,7 +184,7 @@ class CycleGANModel(BaseModel):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         # forward
         self.forward()      # compute fake images and reconstruction images.
-        # G_AB
+        # G_BC
         self.set_requires_grad([self.netD_B, self.netD_C], False)  # Ds require no gradients when optimizing Gs
         self.optimizer_G.zero_grad()  # set G_A and G_B's gradients to zero
         self.backward_G()             # calculate gradients for G_A and G_B
