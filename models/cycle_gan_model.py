@@ -1,5 +1,6 @@
 import torch
 import itertools
+import torchvision.models
 from util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
@@ -88,6 +89,7 @@ class CycleGANModel(BaseModel):
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
             self.netD_C = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+            self.vgg = torchvision.models.vgg19_bn(pretrained=True)
 
         if self.isTrain:
             if opt.lambda_identity > 0.0:  # only works when input and output images have the same number of channels
@@ -177,13 +179,17 @@ class CycleGANModel(BaseModel):
         lambda_A = self.opt.lambda_A
         lambda_B = self.opt.lambda_B
 
-
         # Forward cycle loss || G_B(G_A(A)) - A||
         self.loss_cycle_A = self.criterionCycle(self.rev_A, self.real_A) * lambda_A
         # Backward cycle loss || G_A(G_B(B)) - B||
         self.loss_cycle_B = self.criterionCycle(self.rev_B, self.real_B) * lambda_B
         # Backward cycle loss || G_A(G_B(B)) - B||
         self.loss_cycle_C = self.criterionCycle(self.rev_C, self.real_C) * lambda_B
+
+        vgg_loss_A = self.criterionIdt(self.vgg(self.real_A), self.vgg(self.fake_A_BC))
+        vgg_loss_B = self.criterionIdt(self.vgg(self.real_B), self.vgg(self.fake_B_BC))
+        vgg_loss_C = self.criterionIdt(self.vgg(self.real_C), self.vgg(self.fake_C_BC))
+        self.loss_vgg = vgg_loss_A + vgg_loss_B + vgg_loss_C;
 
         # GAN loss D_B(G_BC(A))
         self.loss_G_A_B = self.criterionGAN(self.netD_B(self.fake_A_BC), True)
@@ -195,8 +201,8 @@ class CycleGANModel(BaseModel):
         self.loss_G_C_B = self.criterionGAN(self.netD_B(self.fake_C_BC), True)
         self.loss_G_C_C = self.criterionGAN(self.netD_C(self.fake_C_BC), True)
         # combined loss and calculate gradients
-        self.loss_G = self.loss_G_A_B + self.loss_G_A_C + self.loss_G_B_B + self.loss_G_B_C + self.loss_G_C_B \
-                      + self.loss_G_C_C + self.loss_cycle_A + self.loss_cycle_B + self.loss_cycle_C
+        self.loss_G = self.loss_G_A_B + self.loss_G_A_C + self.loss_G_B_B + self.loss_G_B_C + self.loss_G_C_B +\
+                      self.loss_G_C_C + self.loss_cycle_A + self.loss_cycle_B + self.loss_cycle_C + self.loss_vgg
         self.loss_G.backward()
 
     def optimize_parameters(self):
