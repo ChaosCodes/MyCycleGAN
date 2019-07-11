@@ -89,7 +89,9 @@ class CycleGANModel(BaseModel):
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
             self.netD_C = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
-            self.vgg = torchvision.models.vgg19_bn(pretrained=True)
+            self.vgg = torchvision.models.vgg19_bn(pretrained=True)\
+                       .to(torch.device(f'cuda:{self.gpu_ids}' if torch.cuda.is_available() else 'cpu'))
+            self.vgg.eval()
 
         if self.isTrain:
             if opt.lambda_identity > 0.0:  # only works when input and output images have the same number of channels
@@ -211,7 +213,6 @@ class CycleGANModel(BaseModel):
         self.forward()      # compute fake images and reconstruction images.
         # G_BC
 
-        self.set_requires_grad(self.vgg, False)  # Ds require no gradients when optimizing Gs
         self.set_requires_grad([self.netD_B, self.netD_C], False)  # Ds require no gradients when optimizing Gs
         self.optimizer_G.zero_grad()  # set G_A and G_B's gradients to zero
         self.backward_G()             # calculate gradients for G_A and G_B
