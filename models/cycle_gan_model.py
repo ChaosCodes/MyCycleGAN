@@ -57,11 +57,11 @@ class CycleGANModel(BaseModel):
         self.loss_names = ['D_C', 'D_B', 'G', 'G_A_B', 'G_A_C', 'G_B_B', 'G_B_C', 'G_C_B', 'G_C_C']
 
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
-        visual_names_A = ['real_A', 'fake_B', 'rec_A']
-        visual_names_B = ['real_B', 'fake_A', 'rec_B']
-        if self.isTrain and self.opt.lambda_identity > 0.0:  # if identity loss is used, we also visualize idt_B=G_A(B) ad idt_A=G_A(B)
-            visual_names_A.append('idt_B')
-            visual_names_B.append('idt_A')
+        visual_names_A = ['real_A', 'fake_A_BC', 'real_C']
+        visual_names_B = ['real_B', 'fake_B_BC', 'real_C_BC']
+        # if self.isTrain and self.opt.lambda_identity > 0.0:  # if identity loss is used, we also visualize idt_B=G_A(B) ad idt_A=G_A(B)
+        #     visual_names_A.append('idt_B')
+        #     visual_names_B.append('idt_A')
 
         self.visual_names = visual_names_A + visual_names_B  # combine visualizations for A and B
 
