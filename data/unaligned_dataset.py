@@ -57,10 +57,13 @@ class UnalignedDataset(BaseDataset):
         A_path = self.A_paths[index % self.A_size]  # make sure index is within then range
         if self.opt.serial_batches:   # make sure index is within then range
             index_B = index % self.B_size
+            index_C = index % self.C_size
         else:   # randomize the index for domain B to avoid fixed pairs.
             index_B = random.randint(0, self.B_size - 1)
+            index_C = random.randint(0, self.C_size - 1)
+
         B_path = self.B_paths[index_B]
-        C_path = self.C_paths[index_B]
+        C_path = self.C_paths[index_C]
         A_img = Image.open(A_path).convert('RGB')
         B_img = Image.open(B_path).convert('RGB')
         C_img = Image.open(C_path).convert('RGB')
