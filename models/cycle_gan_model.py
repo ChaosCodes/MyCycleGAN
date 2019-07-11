@@ -90,7 +90,7 @@ class CycleGANModel(BaseModel):
             self.netD_C = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
             self.vgg = torchvision.models.vgg19_bn(pretrained=True)\
-                       .to(torch.device(f'cuda:{self.gpu_ids}' if torch.cuda.is_available() else 'cpu'))
+                       .to(torch.device(f'cuda:{self.gpu_ids[0]}' if torch.cuda.is_available() else 'cpu'))
             self.vgg.eval()
 
         if self.isTrain:
