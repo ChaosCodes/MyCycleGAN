@@ -54,16 +54,18 @@ class CycleGANModel(BaseModel):
 
         # TODO
         # specify the training losses you want to print out.
-        self.loss_names = ['D_C', 'D_B', 'G', 'G_A_B', 'G_A_C', 'G_B_B', 'G_B_C', 'G_C_B', 'G_C_C']
+        self.loss_names = ['D_C', 'D_B', 'G', 'G_A_B', 'G_A_C', 'G_B_B', 'G_B_C', 'G_C_B', 'G_C_C', 'cycle_A',
+                           'cycle_B', 'cycle_C']
 
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
-        visual_names_A = ['real_A', 'fake_A_BC', 'real_C']
-        visual_names_B = ['real_B', 'fake_B_BC', 'fake_C_BC']
+        visual_names_A = ['real_A', 'fake_A_BC', 'rev_A']
+        visual_names_B = ['real_B', 'fake_B_BC', 'rev_B']
+        visual_names_C = ['real_C', 'fake_C_BC', 'rev_C']
         # if self.isTrain and self.opt.lambda_identity > 0.0:  # if identity loss is used, we also visualize idt_B=G_A(B) ad idt_A=G_A(B)
         #     visual_names_A.append('idt_B')
         #     visual_names_B.append('idt_A')
 
-        self.visual_names = visual_names_A + visual_names_B  # combine visualizations for A and B
+        self.visual_names = visual_names_A + visual_names_B + visual_names_C  # combine visualizations for A and B
 
         # specify the models you want to save to the disk. The training/test scripts will call <BaseModel.save_networks> and <BaseModel.load_networks>.
         if self.isTrain:
@@ -76,10 +78,12 @@ class CycleGANModel(BaseModel):
         # Code (vs. paper): G_BC (G), D_A (D_Y), D_B (D_X)
         self.netG_BC = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm,
                                          not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
-        # self.netG_B = networks.define_G(opt.output_nc, opt.input_nc, opt.ngf, opt.netG, opt.norm,
-        #                                 not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
+        self.netG_BC_rev = networks.define_G(opt.output_nc, opt.input_nc, opt.ngf, opt.netG, opt.norm,
+                                             not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
 
         if self.isTrain:  # define discriminators
+            self.netD_A = networks.define_D(opt.output_nc, opt.ndf, opt.netD,
+                                            opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
             self.netD_B = networks.define_D(opt.output_nc, opt.ndf, opt.netD,
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
             self.netD_C = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
@@ -120,6 +124,10 @@ class CycleGANModel(BaseModel):
         self.fake_A_BC = self.netG_BC(self.real_A)  # G_BC(A)
         self.fake_B_BC = self.netG_BC(self.real_B)  # G_BC(B)
         self.fake_C_BC = self.netG_BC(self.real_C)  # G_BC(C)
+
+        self.rev_A = self.netG_BC_rev(self.real_A)  # G_BC(A)
+        self.rev_B = self.netG_BC_rev(self.real_B)  # G_BC(B)
+        self.rev_C = self.netG_BC_rev(self.real_C)  # G_BC(C)
 
     def backward_D_basic(self, netD, real, fake_A, fake_B, fake_C):
         """Calculate GAN loss for the discriminator
@@ -165,6 +173,18 @@ class CycleGANModel(BaseModel):
 
     def backward_G(self):
         """Calculate the loss for generators G_BC"""
+        lambda_idt = self.opt.lambda_identity
+        lambda_A = self.opt.lambda_A
+        lambda_B = self.opt.lambda_B
+
+
+        # Forward cycle loss || G_B(G_A(A)) - A||
+        self.loss_cycle_A = self.criterionCycle(self.rev_A, self.real_A) * lambda_A
+        # Backward cycle loss || G_A(G_B(B)) - B||
+        self.loss_cycle_B = self.criterionCycle(self.rev_B, self.real_B) * lambda_B
+        # Backward cycle loss || G_A(G_B(B)) - B||
+        self.loss_cycle_C = self.criterionCycle(self.rev_C, self.real_C) * lambda_B
+
         # GAN loss D_B(G_BC(A))
         self.loss_G_A_B = self.criterionGAN(self.netD_B(self.fake_A_BC), True)
         self.loss_G_A_C = self.criterionGAN(self.netD_C(self.fake_A_BC), True)
@@ -176,7 +196,7 @@ class CycleGANModel(BaseModel):
         self.loss_G_C_C = self.criterionGAN(self.netD_C(self.fake_C_BC), True)
         # combined loss and calculate gradients
         self.loss_G = self.loss_G_A_B + self.loss_G_A_C + self.loss_G_B_B + self.loss_G_B_C + self.loss_G_C_B \
-                      + self.loss_G_C_C
+                      + self.loss_G_C_C + self.loss_cycle_A + self.loss_cycle_B + self.loss_cycle_C
         self.loss_G.backward()
 
     def optimize_parameters(self):
