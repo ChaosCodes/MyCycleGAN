@@ -192,9 +192,9 @@ class CycleGANModel(BaseModel):
         vgg_loss_C = self.criterionIdt(self.vgg(self.real_C), self.vgg(self.fake_C_BC))
         self.loss_vgg = vgg_loss_A + vgg_loss_B + vgg_loss_C
 
-        vgg_loss_thesame_A = self.criterionCycle(self.vgg(self.real_A), self.vgg(self.fake_A_BC))
-        vgg_loss_thesame_B = self.criterionCycle(self.vgg(self.real_B), self.vgg(self.fake_B_BC))
-        vgg_loss_thesame_C = self.criterionCycle(self.vgg(self.real_C), self.vgg(self.fake_C_BC))
+        vgg_loss_thesame_A = self.criterionCycle(self.real_A, self.fake_A_BC)
+        vgg_loss_thesame_B = self.criterionCycle(self.real_B, self.fake_B_BC)
+        vgg_loss_thesame_C = self.criterionCycle(self.real_C, self.fake_C_BC)
         self.loss = (vgg_loss_thesame_A + vgg_loss_thesame_B + vgg_loss_thesame_C) * 0.01 + self.loss_vgg
 
         self.loss_G.backward()
