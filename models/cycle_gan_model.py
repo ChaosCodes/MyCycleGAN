@@ -195,7 +195,7 @@ class CycleGANModel(BaseModel):
         vgg_loss_thesame_A = self.criterionCycle(self.real_A, self.fake_A_BC)
         vgg_loss_thesame_B = self.criterionCycle(self.real_B, self.fake_B_BC)
         vgg_loss_thesame_C = self.criterionCycle(self.real_C, self.fake_C_BC)
-        self.loss = (vgg_loss_thesame_A + vgg_loss_thesame_B + vgg_loss_thesame_C) * 0.01 + self.loss_vgg
+        self.loss_G = (vgg_loss_thesame_A + vgg_loss_thesame_B + vgg_loss_thesame_C) * 0.01 + self.loss_vgg
 
         self.loss_G.backward()
         # # GAN loss D_B(G_BC(A))
@@ -218,7 +218,7 @@ class CycleGANModel(BaseModel):
         self.forward()      # compute fake images and reconstruction images.
         # G_BC
 
-        self.set_requires_grad([self.netD_B, self.netD_C], False)  # Ds require no gradients when optimizing Gs
+        # self.set_requires_grad([self.netD_B, self.netD_C], False)  # Ds require no gradients when optimizing Gs
         self.optimizer_G.zero_grad()  # set G_A and G_B's gradients to zero
         self.backward_G()             # calculate gradients for G_A and G_B
         self.optimizer_G.step()       # update G_A and G_B's weights
