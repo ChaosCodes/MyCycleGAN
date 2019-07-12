@@ -55,13 +55,12 @@ class CycleGANModel(BaseModel):
 
         # TODO
         # specify the training losses you want to print out.
-        self.loss_names = ['D_C', 'D_B', 'G', 'G_A_B', 'G_A_C', 'G_B_B', 'G_B_C', 'G_C_B', 'G_C_C', 'cycle_A',
-                           'cycle_B', 'cycle_C']
+        self.loss_names = ['vgg']
 
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
-        visual_names_A = ['real_A', 'fake_A_BC', 'rev_A']
-        visual_names_B = ['real_B', 'fake_B_BC', 'rev_B']
-        visual_names_C = ['real_C', 'fake_C_BC', 'rev_C']
+        visual_names_A = ['real_A', 'fake_A_BC']
+        visual_names_B = ['real_B', 'fake_B_BC']
+        visual_names_C = ['real_C', 'fake_C_BC']
         # if self.isTrain and self.opt.lambda_identity > 0.0:  # if identity loss is used, we also visualize idt_B=G_A(B) ad idt_A=G_A(B)
         #     visual_names_A.append('idt_B')
         #     visual_names_B.append('idt_A')
@@ -128,10 +127,10 @@ class CycleGANModel(BaseModel):
         self.fake_A_BC = self.netG_BC(self.real_A)  # G_BC(A)
         self.fake_B_BC = self.netG_BC(self.real_B)  # G_BC(B)
         self.fake_C_BC = self.netG_BC(self.real_C)  # G_BC(C)
-
-        self.rev_A = self.netG_BC_rev(self.real_A)  # G_BC(A)
-        self.rev_B = self.netG_BC_rev(self.real_B)  # G_BC(B)
-        self.rev_C = self.netG_BC_rev(self.real_C)  # G_BC(C)
+        #
+        # self.rev_A = self.netG_BC_rev(self.real_A)  # G_BC(A)
+        # self.rev_B = self.netG_BC_rev(self.real_B)  # G_BC(B)
+        # self.rev_C = self.netG_BC_rev(self.real_C)  # G_BC(C)
 
     def backward_D_basic(self, netD, real, fake_A, fake_B, fake_C):
         """Calculate GAN loss for the discriminator
@@ -181,31 +180,37 @@ class CycleGANModel(BaseModel):
         lambda_A = self.opt.lambda_A
         lambda_B = self.opt.lambda_B
 
-        # Forward cycle loss || G_B(G_A(A)) - A||
-        self.loss_cycle_A = self.criterionCycle(self.rev_A, self.real_A) * lambda_A
-        # Backward cycle loss || G_A(G_B(B)) - B||
-        self.loss_cycle_B = self.criterionCycle(self.rev_B, self.real_B) * lambda_B
-        # Backward cycle loss || G_A(G_B(B)) - B||
-        self.loss_cycle_C = self.criterionCycle(self.rev_C, self.real_C) * lambda_B
+        # # Forward cycle loss || G_B(G_A(A)) - A||
+        # self.loss_cycle_A = self.criterionCycle(self.rev_A, self.real_A) * lambda_A
+        # # Backward cycle loss || G_A(G_B(B)) - B||
+        # self.loss_cycle_B = self.criterionCycle(self.rev_B, self.real_B) * lambda_B
+        # # Backward cycle loss || G_A(G_B(B)) - B||
+        # self.loss_cycle_C = self.criterionCycle(self.rev_C, self.real_C) * lambda_B
 
         vgg_loss_A = self.criterionIdt(self.vgg(self.real_A), self.vgg(self.fake_A_BC))
         vgg_loss_B = self.criterionIdt(self.vgg(self.real_B), self.vgg(self.fake_B_BC))
         vgg_loss_C = self.criterionIdt(self.vgg(self.real_C), self.vgg(self.fake_C_BC))
         self.loss_vgg = vgg_loss_A + vgg_loss_B + vgg_loss_C
 
-        # GAN loss D_B(G_BC(A))
-        self.loss_G_A_B = self.criterionGAN(self.netD_B(self.fake_A_BC), True)
-        self.loss_G_A_C = self.criterionGAN(self.netD_C(self.fake_A_BC), True)
-        # GAN loss D_B(G_BC(B))
-        self.loss_G_B_B = self.criterionGAN(self.netD_B(self.fake_B_BC), True)
-        self.loss_G_B_C = self.criterionGAN(self.netD_C(self.fake_B_BC), True)
-        # GAN loss D_B(G_BC(B))
-        self.loss_G_C_B = self.criterionGAN(self.netD_B(self.fake_C_BC), True)
-        self.loss_G_C_C = self.criterionGAN(self.netD_C(self.fake_C_BC), True)
-        # combined loss and calculate gradients
-        self.loss_G = self.loss_G_A_B + self.loss_G_A_C + self.loss_G_B_B + self.loss_G_B_C + self.loss_G_C_B +\
-                      self.loss_G_C_C + self.loss_cycle_A + self.loss_cycle_B + self.loss_cycle_C + self.loss_vgg * lambda_idt
+        vgg_loss_thesame_A = self.criterionCycle(self.vgg(self.real_A), self.vgg(self.fake_A_BC))
+        vgg_loss_thesame_B = self.criterionCycle(self.vgg(self.real_B), self.vgg(self.fake_B_BC))
+        vgg_loss_thesame_C = self.criterionCycle(self.vgg(self.real_C), self.vgg(self.fake_C_BC))
+        self.loss = (vgg_loss_thesame_A + vgg_loss_thesame_B + vgg_loss_thesame_C) * 0.01 + self.loss_vgg
+
         self.loss_G.backward()
+        # # GAN loss D_B(G_BC(A))
+        # self.loss_G_A_B = self.criterionGAN(self.netD_B(self.fake_A_BC), True)
+        # self.loss_G_A_C = self.criterionGAN(self.netD_C(self.fake_A_BC), True)
+        # # GAN loss D_B(G_BC(B))
+        # self.loss_G_B_B = self.criterionGAN(self.netD_B(self.fake_B_BC), True)
+        # self.loss_G_B_C = self.criterionGAN(self.netD_C(self.fake_B_BC), True)
+        # # GAN loss D_B(G_BC(B))
+        # self.loss_G_C_B = self.criterionGAN(self.netD_B(self.fake_C_BC), True)
+        # self.loss_G_C_C = self.criterionGAN(self.netD_C(self.fake_C_BC), True)
+        # # combined loss and calculate gradients
+        # self.loss_G = self.loss_G_A_B + self.loss_G_A_C + self.loss_G_B_B + self.loss_G_B_C + self.loss_G_C_B +\
+        #               self.loss_G_C_C + self.loss_cycle_A + self.loss_cycle_B + self.loss_cycle_C + self.loss_vgg * lambda_idt
+        # self.loss_G.backward()
 
     def optimize_parameters(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
@@ -218,9 +223,9 @@ class CycleGANModel(BaseModel):
         self.backward_G()             # calculate gradients for G_A and G_B
         self.optimizer_G.step()       # update G_A and G_B's weights
         # D_B and D_C
-        self.set_requires_grad([self.netD_B, self.netD_C], True)
-        self.optimizer_D.zero_grad()   # set D_A and D_B's gradients to zero
-
-        self.backward_D_B()      # calculate gradients for D_B
-        self.backward_D_C()      # calculate graidents for D_C
-        self.optimizer_D.step()  # update D_B and D_C's weights
+        # self.set_requires_grad([self.netD_B, self.netD_C], True)
+        # self.optimizer_D.zero_grad()   # set D_A and D_B's gradients to zero
+        #
+        # self.backward_D_B()      # calculate gradients for D_B
+        # self.backward_D_C()      # calculate graidents for D_C
+        # self.optimizer_D.step()  # update D_B and D_C's weights
