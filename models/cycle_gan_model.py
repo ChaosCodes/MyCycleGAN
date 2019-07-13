@@ -55,9 +55,9 @@ class CycleGANModel(BaseModel):
 
         # TODO
         # specify the training losses you want to print out.
-        #self.loss_names = ['D_C', 'D_B', 'G', 'G_A_B', 'G_A_C', 'G_B_B', 'G_B_C', 'G_C_B', 'G_C_C', 'cycle_A',
-        #                   'cycle_B', 'cycle_C']
-        self.loss_names = ['D_C', 'D_B']
+        self.loss_names = ['D_C', 'D_B', 'G', 'G_A_B', 'G_A_C', 'G_B_B', 'G_B_C', 'G_C_B', 'G_C_C', 'cycle_A',
+                           'cycle_B', 'cycle_C']
+        #self.loss_names = ['D_C', 'D_B']
 
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ['real_A', 'fake_A_BC', 'rev_A']
@@ -213,10 +213,10 @@ class CycleGANModel(BaseModel):
         self.forward()      # compute fake images and reconstruction images.
         # G_BC
 
-        #self.set_requires_grad([self.netD_B, self.netD_C], False)  # Ds require no gradients when optimizing Gs
-        #self.optimizer_G.zero_grad()  # set G_A and G_B's gradients to zero
-        #self.backward_G()             # calculate gradients for G_A and G_B
-        #self.optimizer_G.step()       # update G_A and G_B's weights
+        self.set_requires_grad([self.netD_B, self.netD_C], False)  # Ds require no gradients when optimizing Gs
+        self.optimizer_G.zero_grad()  # set G_A and G_B's gradients to zero
+        self.backward_G()             # calculate gradients for G_A and G_B
+        self.optimizer_G.step()       # update G_A and G_B's weights
         # D_B and D_C
         self.set_requires_grad([self.netD_B, self.netD_C], True)
         self.optimizer_D.zero_grad()   # set D_A and D_B's gradients to zero
